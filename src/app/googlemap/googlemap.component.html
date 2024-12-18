@@ -1,0 +1,26 @@
+<div #map id="map" class="map-container" style="height: 500px">
+  <!-- 地圖容器，顯示 Google 地圖 -->
+</div>
+<!-- <mat-drawer-container></mat-drawer-container> -->
+<!-- 路線資訊容器 -->
+<div
+  id="directions-panel"
+  style="flex: 1; padding: 10px; overflow-y: auto; background: #f9f9f9"
+>
+  <!-- 顯示路線資訊 -->
+  <div [innerHTML]="routeInfo"></div>
+</div>
+
+<!-- 交通方式切換 -->
+<div style="margin-top: 20px">
+  <!-- <mat-icon
+    aria-hidden="false"
+    aria-label="Example home icon"
+    fontIcon="home"
+    (click)="setTravelModeD(this.travelMode)"
+  ></mat-icon> -->
+  <button (click)="setTravelModeD(this.travelMode)">開車</button>
+  <button (click)="setTravelModeW(this.travelMode)">步行</button>
+  <button (click)="setTravelModeT(this.travelMode)">大眾交通</button>
+  <button (click)="setTravelModeB(this.travelMode)">自行車</button>
+</div>
