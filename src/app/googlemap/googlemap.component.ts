@@ -69,6 +69,8 @@ export class GooglemapComponent implements OnInit {
         if (status === google.maps.DirectionsStatus.OK && result) {
           // 確保 result 不為 null
           this.directionsRenderer.setDirections(result);
+          console.log(status);
+
           console.log(result);
 
           // 顯示路線資訊
