@@ -1,7 +1,8 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-declare var google: any; // 讓 TypeScript 認識 google 物件
+declare var google: any;
+
 @Component({
   selector: 'app-googlemap',
   standalone: true,
@@ -10,56 +11,88 @@ declare var google: any; // 讓 TypeScript 認識 google 物件
   styleUrls: ['./googlemap.component.scss'],
 })
 export class GooglemapComponent implements OnInit {
-  @ViewChild('map', { static: true }) mapElement!: ElementRef; // 引用 HTML 元素
+  @ViewChild('map', { static: true }) mapElement!: ElementRef;
 
   map!: google.maps.Map;
   directionsService = new google.maps.DirectionsService();
   directionsRenderer = new google.maps.DirectionsRenderer();
-  travelMode: google.maps.TravelMode = google.maps.TravelMode.WALKING; // 預設旅行方式
-  routeInfo: string = ''; // 用來顯示路線資訊
+  travelMode: google.maps.TravelMode = google.maps.TravelMode.DRIVING;
 
-  google: any;
+  origin: google.maps.LatLng | null = null;
+  destination: google.maps.LatLng | null = null;
+
+  routeInfo: string = '';
+  markers: google.maps.Marker[] = []; // 用來存放 Marker 的清單
+
   ngOnInit(): void {
     this.initMap();
   }
 
   initMap(): void {
-    const location = { lat: 25.0374865, lng: 121.5647688 }; // 預設地點
+    const location = { lat: 25.0374865, lng: 121.5647688 };
 
-    // 建立地圖
     this.map = new google.maps.Map(this.mapElement.nativeElement, {
       center: location,
       zoom: 16,
-      mapTypeId: 'terrain', // 地圖類型
+      mapTypeId: 'terrain',
     });
 
-    // 將 DirectionsRenderer 綁定到地圖和路線面板
     this.directionsRenderer.setMap(this.map);
     this.directionsRenderer.setPanel(
       document.getElementById('directions-panel')!
     );
 
-    // 放置 Marker
-    new google.maps.Marker({
-      position: location,
-      map: this.map,
-      title: '台北市政府親子劇場', // Marker 標題
+    // 監聽地圖點擊事件
+    this.map.addListener('click', (event: google.maps.MapMouseEvent) => {
+      if (event.latLng) {
+        this.handleMapClick(event.latLng);
+      }
     });
+  }
 
-    // 路徑規劃
-    this.calculateAndDisplayRoute();
+  handleMapClick(latLng: google.maps.LatLng): void {
+    if (this.origin && this.destination) {
+      // 如果起點和終點都已設定，重置地圖
+      this.resetMarkers();
+    }
+
+    // 設定起點或終點
+    if (!this.origin) {
+      this.origin = latLng;
+      const marker = new google.maps.Marker({
+        position: latLng,
+        map: this.map,
+        title: '起點',
+        label: 'A',
+      });
+      this.markers.push(marker); // 保存 Marker
+    } else if (!this.destination) {
+      this.destination = latLng;
+      const marker = new google.maps.Marker({
+        position: latLng,
+        map: this.map,
+        title: '終點',
+        label: 'B',
+      });
+      this.markers.push(marker); // 保存 Marker
+
+      // 起點和終點都設定後，規劃路線
+      this.calculateAndDisplayRoute();
+    }
   }
 
   calculateAndDisplayRoute(): void {
-    const request: google.maps.DirectionsRequest = {
-      origin: { lat: 22.98279038768174, lng: 120.16015566419003 }, // 起點
-      destination: { lat: 23.156647663552032, lng: 120.30294936261154 }, // 終點
-      travelMode: this.travelMode, // 旅行方式：如開車、步行等
-      provideRouteAlternatives: true,
-    };
-    console.log(this.travelMode);
+    if (!this.origin || !this.destination) {
+      console.error('起點或終點未設定');
+      return;
+    }
 
-    // 呼叫 DirectionsService 並顯示路徑
+    const request: google.maps.DirectionsRequest = {
+      origin: this.origin,
+      destination: this.destination,
+      travelMode: this.travelMode,
+    };
+
     this.directionsService.route(
       request,
       (
@@ -67,13 +100,7 @@ export class GooglemapComponent implements OnInit {
         status: google.maps.DirectionsStatus
       ) => {
         if (status === google.maps.DirectionsStatus.OK && result) {
-          // 確保 result 不為 null
           this.directionsRenderer.setDirections(result);
-          console.log(status);
-
-          console.log(result);
-
-          // 顯示路線資訊
           this.displayRouteInfo(result);
         } else {
           console.error('路徑規劃失敗，錯誤訊息：' + status);
@@ -82,18 +109,15 @@ export class GooglemapComponent implements OnInit {
     );
   }
 
-  // 顯示起點、終點、時間和旅行方式
   displayRouteInfo(result: google.maps.DirectionsResult): void {
     const route = result.routes[0];
-    const leg = route.legs[0]; // 只有一條路線時取第一個 leg
+    const leg = route.legs[0];
 
-    // 提取相關資訊
     const startAddress = leg.start_address;
     const endAddress = leg.end_address;
     const distance = leg.distance?.text;
     const duration = leg.duration?.text;
 
-    // 顯示資訊
     this.routeInfo = `
       <h3>路線資訊</h3>
       <p><strong>起點:</strong> ${startAddress}</p>
@@ -102,6 +126,20 @@ export class GooglemapComponent implements OnInit {
       <p><strong>總時間:</strong> ${duration}</p>
       <p><strong>旅行方式:</strong> ${this.travelMode}</p>
     `;
+  }
+
+  resetMarkers(): void {
+    // 清除地圖上的 Marker
+    this.markers.forEach((marker) => marker.setMap(null));
+    this.markers = [];
+
+    // 重置起點和終點
+    this.origin = null;
+    this.destination = null;
+
+    // 清除 DirectionsRenderer
+    this.directionsRenderer.setDirections({ routes: [] });
+    this.routeInfo = '';
   }
 
   // 動態切換交通方式
